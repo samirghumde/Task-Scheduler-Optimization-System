@@ -301,11 +301,3 @@ git remote add origin https://github.com/Sonia068/Task-Scheduler-Optimization-Sy
 git push -u origin main
 ```
 
-## 👨‍💻 Author
-
-**Sonia Thakur**
-
-- GitHub: [@Sonia068](https://github.com/Sonia068)
-- LinkedIn: https://www.linkedin.com/in/sonia-thakur-6ab93b349/
-
-⭐ **If you found this project helpful, please give it a star!**
