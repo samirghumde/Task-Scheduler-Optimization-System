@@ -1,0 +1,1643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task Scheduler Optimization System</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Syne:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --bg: #0a0b0f;
+  --surface: #111318;
+  --surface2: #181c24;
+  --surface3: #1e2330;
+  --border: #252b38;
+  --border2: #2e3545;
+  --accent: #00d4ff;
+  --accent2: #7c3aed;
+  --green: #22c55e;
+  --yellow: #eab308;
+  --red: #ef4444;
+  --orange: #f97316;
+  --text: #e2e8f0;
+  --text2: #94a3b8;
+  --text3: #475569;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-display: 'Syne', sans-serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Background grid */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.container { position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; padding: 24px; }
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 28px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
+}
+.header::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), var(--accent2), transparent);
+}
+.header-left h1 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: var(--text);
+}
+.header-left h1 span { color: var(--accent); }
+.header-left p { font-size: 11px; color: var(--text3); margin-top: 3px; letter-spacing: 1px; text-transform: uppercase; }
+.header-right { display: flex; align-items: center; gap: 12px; }
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.badge-cyan { background: rgba(0,212,255,0.1); border: 1px solid rgba(0,212,255,0.3); color: var(--accent); }
+.badge-purple { background: rgba(124,58,237,0.1); border: 1px solid rgba(124,58,237,0.3); color: #a78bfa; }
+.badge-green { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); color: var(--green); }
+
+.dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+/* Controls bar */
+.controls-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.controls-bar label {
+  font-size: 11px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.ctrl-group { display: flex; align-items: center; gap: 8px; }
+
+select, input[type="number"] {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 7px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+}
+select:focus, input[type="number"]:focus { border-color: var(--accent); }
+select option { background: var(--surface2); }
+
+.btn {
+  padding: 8px 18px;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.btn-primary {
+  background: var(--accent);
+  color: var(--bg);
+}
+.btn-primary:hover { background: #33ddff; box-shadow: 0 0 20px rgba(0,212,255,0.4); }
+.btn-secondary {
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--text2);
+}
+.btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+.btn-danger {
+  background: rgba(239,68,68,0.1);
+  border: 1px solid rgba(239,68,68,0.3);
+  color: var(--red);
+}
+.btn-danger:hover { background: rgba(239,68,68,0.2); }
+
+/* KPI Cards */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 20px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.kpi-card:hover { border-color: var(--border2); transform: translateY(-1px); }
+.kpi-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+}
+.kpi-card.cyan::after { background: linear-gradient(90deg, transparent, var(--accent), transparent); }
+.kpi-card.green::after { background: linear-gradient(90deg, transparent, var(--green), transparent); }
+.kpi-card.yellow::after { background: linear-gradient(90deg, transparent, var(--yellow), transparent); }
+.kpi-card.red::after { background: linear-gradient(90deg, transparent, var(--red), transparent); }
+.kpi-card.purple::after { background: linear-gradient(90deg, transparent, #a78bfa, transparent); }
+
+.kpi-label {
+  font-size: 10px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 8px;
+}
+.kpi-value {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+}
+.kpi-value.cyan { color: var(--accent); }
+.kpi-value.green { color: var(--green); }
+.kpi-value.yellow { color: var(--yellow); }
+.kpi-value.red { color: var(--red); }
+.kpi-value.purple { color: #a78bfa; }
+.kpi-sub { font-size: 11px; color: var(--text3); margin-top: 4px; }
+
+/* Main grid layout */
+.main-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+/* Panel */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface2);
+}
+.panel-title {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.panel-body { padding: 20px; }
+
+/* Gantt Chart */
+.gantt-container { overflow-x: auto; }
+.gantt-header {
+  display: flex;
+  margin-left: 90px;
+  margin-bottom: 4px;
+}
+.gantt-time-label {
+  font-size: 10px;
+  color: var(--text3);
+  width: 40px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.gantt-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  min-height: 36px;
+}
+.gantt-resource-label {
+  width: 86px;
+  font-size: 11px;
+  color: var(--text2);
+  flex-shrink: 0;
+  padding-right: 8px;
+  text-align: right;
+}
+.gantt-track {
+  flex: 1;
+  height: 36px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  position: relative;
+  min-width: 400px;
+}
+.gantt-gridline {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 1px;
+  background: var(--border);
+  opacity: 0.5;
+}
+.gantt-bar {
+  position: absolute;
+  top: 4px;
+  height: 28px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--bg);
+  cursor: pointer;
+  transition: filter 0.15s, transform 0.15s;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding: 0 4px;
+}
+.gantt-bar:hover { filter: brightness(1.2); transform: scaleY(1.05); z-index: 10; }
+.gantt-bar.ontime { background: linear-gradient(135deg, #22c55e, #16a34a); }
+.gantt-bar.late { background: linear-gradient(135deg, #eab308, #ca8a04); }
+.gantt-bar.deadline-marker {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 2px;
+  background: rgba(239,68,68,0.6);
+  border-radius: 1px;
+  z-index: 5;
+}
+
+/* Task Table */
+.task-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.task-table th {
+  text-align: left;
+  padding: 10px 14px;
+  font-size: 10px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+}
+.task-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text2);
+  vertical-align: middle;
+}
+.task-table tr:last-child td { border-bottom: none; }
+.task-table tr:hover td { background: var(--surface2); }
+.task-id {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--accent);
+}
+.status-pill {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.status-ontime { background: rgba(34,197,94,0.15); color: var(--green); border: 1px solid rgba(34,197,94,0.3); }
+.status-late { background: rgba(234,179,8,0.15); color: var(--yellow); border: 1px solid rgba(234,179,8,0.3); }
+.status-missed { background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
+
+.priority-bar {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+}
+.priority-dot {
+  width: 8px; height: 8px;
+  border-radius: 2px;
+  background: var(--border2);
+}
+.priority-dot.active { background: var(--accent); }
+
+/* Comparison table */
+.compare-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.compare-table th {
+  padding: 10px 16px;
+  text-align: left;
+  font-size: 10px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-bottom: 1px solid var(--border);
+}
+.compare-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text2);
+}
+.compare-table tr:last-child td { border-bottom: none; }
+.best-cell { color: var(--green) !important; font-weight: 700; }
+
+/* Bar chart */
+.bar-chart { display: flex; flex-direction: column; gap: 10px; }
+.bar-row { display: flex; align-items: center; gap: 12px; }
+.bar-label { width: 80px; font-size: 11px; color: var(--text2); text-align: right; flex-shrink: 0; }
+.bar-track { flex: 1; height: 22px; background: var(--surface2); border-radius: 4px; overflow: hidden; border: 1px solid var(--border); }
+.bar-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; padding-left: 8px; font-size: 10px; font-weight: 600; color: var(--bg); transition: width 0.8s cubic-bezier(0.4,0,0.2,1); }
+.bar-val { width: 50px; font-size: 11px; color: var(--text3); }
+
+/* Tabs */
+.tabs { display: flex; gap: 4px; padding: 4px; background: var(--surface2); border-radius: 8px; margin-bottom: 20px; }
+.tab {
+  flex: 1;
+  padding: 8px 14px;
+  border: none;
+  background: transparent;
+  color: var(--text3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.tab.active {
+  background: var(--accent);
+  color: var(--bg);
+  box-shadow: 0 0 12px rgba(0,212,255,0.3);
+}
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* Add task form */
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 16px; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; }
+.form-input {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  outline: none;
+  transition: border-color 0.2s;
+  width: 100%;
+}
+.form-input:focus { border-color: var(--accent); }
+
+/* What-if panel */
+.whatif-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.whatif-section { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+.whatif-title { font-size: 11px; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; font-weight: 700; }
+
+/* Algorithm info cards */
+.algo-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.algo-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  transition: border-color 0.2s;
+}
+.algo-card:hover { border-color: var(--border2); }
+.algo-card-name { font-family: var(--font-display); font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+.algo-card-tag { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+.algo-card-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.algo-card-list li { font-size: 11px; color: var(--text2); display: flex; align-items: flex-start; gap: 6px; }
+.algo-card-list li::before { content: '▸'; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+
+/* Tooltip */
+.tooltip {
+  position: fixed;
+  background: var(--surface3);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 11px;
+  color: var(--text);
+  pointer-events: none;
+  z-index: 1000;
+  display: none;
+  min-width: 160px;
+}
+.tooltip.visible { display: block; }
+.tooltip-title { font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+.tooltip-row { display: flex; justify-content: space-between; gap: 12px; color: var(--text2); }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .whatif-grid { grid-template-columns: 1fr; }
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .algo-cards { grid-template-columns: 1fr; }
+}
+
+/* Animations */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.fade-in { animation: fadeIn 0.4s ease forwards; }
+
+.loading-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(10,11,15,0.85);
+  z-index: 999;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 16px;
+}
+.loading-overlay.visible { display: flex; }
+.spinner {
+  width: 40px; height: 40px;
+  border: 3px solid var(--border2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: 13px; color: var(--text2); letter-spacing: 1px; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--surface); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text">RUNNING SCHEDULER...</div>
+</div>
+
+<div class="tooltip" id="tooltip">
+  <div class="tooltip-title" id="tt-title"></div>
+  <div class="tooltip-row"><span>Start:</span><span id="tt-start"></span></div>
+  <div class="tooltip-row"><span>End:</span><span id="tt-end"></span></div>
+  <div class="tooltip-row"><span>Deadline:</span><span id="tt-ddl"></span></div>
+  <div class="tooltip-row"><span>Duration:</span><span id="tt-dur"></span></div>
+  <div class="tooltip-row"><span>Profit:</span><span id="tt-profit"></span></div>
+  <div class="tooltip-row"><span>Status:</span><span id="tt-status"></span></div>
+</div>
+
+<div class="container">
+  <!-- Header -->
+  <div class="header fade-in">
+    <div class="header-left">
+      <h1>Task <span>Scheduler</span> Optimization System</h1>
+      <p>DSA Project · Priority Queue · Greedy · Dynamic Programming</p>
+    </div>
+    <div class="header-right">
+      <span class="badge badge-cyan"><span class="dot"></span>Live Simulation</span>
+      <span class="badge badge-purple">v2.0</span>
+      <span class="badge badge-green">GitHub Ready</span>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls-bar fade-in">
+    <div class="ctrl-group">
+      <label>Algorithm</label>
+      <select id="algoSelect">
+        <option value="greedy">Greedy (Priority + EDF)</option>
+        <option value="priority_queue" selected>Priority Queue (Heap)</option>
+        <option value="dp">Dynamic Programming</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <label>Horizon</label>
+      <input type="number" id="horizonInput" value="72" min="24" max="168" style="width:80px">
+      <label>hrs</label>
+    </div>
+    <div class="ctrl-group">
+      <label>Tasks</label>
+      <select id="datasetSelect">
+        <option value="default">Default Dataset (10 tasks)</option>
+        <option value="stress">Stress Test (20 tasks)</option>
+        <option value="tight">Tight Deadlines</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" onclick="runSchedule()">▶ RUN SCHEDULE</button>
+    <button class="btn btn-secondary" onclick="runAllAlgorithms()">⚡ COMPARE ALL</button>
+    <button class="btn btn-secondary" onclick="exportReport()">↓ EXPORT</button>
+    <button class="btn btn-danger" onclick="resetAll()">✕ RESET</button>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="kpi-grid fade-in" id="kpiGrid">
+    <div class="kpi-card cyan">
+      <div class="kpi-label">Total Tasks</div>
+      <div class="kpi-value cyan" id="kpi-total">—</div>
+      <div class="kpi-sub">in dataset</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-label">On Time</div>
+      <div class="kpi-value green" id="kpi-ontime">—</div>
+      <div class="kpi-sub" id="kpi-ontime-pct">completion rate</div>
+    </div>
+    <div class="kpi-card yellow">
+      <div class="kpi-label">Late Tasks</div>
+      <div class="kpi-value yellow" id="kpi-late">—</div>
+      <div class="kpi-sub" id="kpi-lateness">total lateness</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-label">Missed</div>
+      <div class="kpi-value red" id="kpi-missed">—</div>
+      <div class="kpi-sub">unscheduled</div>
+    </div>
+    <div class="kpi-card purple">
+      <div class="kpi-label">Total Profit</div>
+      <div class="kpi-value purple" id="kpi-profit">—</div>
+      <div class="kpi-sub" id="kpi-profit-eff">efficiency</div>
+    </div>
+    <div class="kpi-card cyan">
+      <div class="kpi-label">Makespan</div>
+      <div class="kpi-value cyan" id="kpi-makespan">—</div>
+      <div class="kpi-sub">hours total</div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs" id="mainTabs">
+    <button class="tab active" onclick="switchTab('gantt')">📊 Gantt Chart</button>
+    <button class="tab" onclick="switchTab('tasks')">📋 Task List</button>
+    <button class="tab" onclick="switchTab('compare')">⚡ Compare</button>
+    <button class="tab" onclick="switchTab('add')">➕ Add Task</button>
+    <button class="tab" onclick="switchTab('whatif')">🔀 What-If</button>
+    <button class="tab" onclick="switchTab('info')">ℹ️ DSA Info</button>
+  </div>
+
+  <!-- GANTT TAB -->
+  <div class="tab-content active" id="tab-gantt">
+    <div class="panel fade-in">
+      <div class="panel-header">
+        <span class="panel-title">Execution Timeline — Gantt View</span>
+        <div style="display:flex;gap:12px;align-items:center;font-size:11px;color:var(--text3)">
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:3px;background:var(--green);display:inline-block"></span>On Time</span>
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:3px;background:var(--yellow);display:inline-block"></span>Late</span>
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:2px;height:12px;background:var(--red);opacity:0.7;display:inline-block"></span>Deadline</span>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="gantt-container" id="ganttContainer">
+          <div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">
+            Click <strong style="color:var(--accent)">RUN SCHEDULE</strong> to generate Gantt chart
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TASKS TAB -->
+  <div class="tab-content" id="tab-tasks">
+    <div class="panel fade-in">
+      <div class="panel-header">
+        <span class="panel-title">Scheduled Task Details</span>
+        <span id="taskCount" style="font-size:11px;color:var(--text3)"></span>
+      </div>
+      <div class="panel-body" style="padding:0;overflow-x:auto">
+        <table class="task-table" id="taskTable">
+          <thead>
+            <tr>
+              <th>Task ID</th>
+              <th>Priority</th>
+              <th>Skill</th>
+              <th>Dependencies</th>
+              <th>Duration</th>
+              <th>Deadline</th>
+              <th>Profit</th>
+              <th>Start</th>
+              <th>End</th>
+              <th>Resource</th>
+              <th>Lateness</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="taskTableBody">
+            <tr><td colspan="12" style="text-align:center;color:var(--text3);padding:40px">Run schedule to see task details</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPARE TAB -->
+  <div class="tab-content" id="tab-compare">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <div class="panel fade-in">
+        <div class="panel-header"><span class="panel-title">Algorithm Comparison</span></div>
+        <div class="panel-body" style="padding:0;overflow-x:auto">
+          <table class="compare-table" id="compareTable">
+            <thead>
+              <tr>
+                <th>Algorithm</th>
+                <th>On-Time %</th>
+                <th>Profit</th>
+                <th>Lateness</th>
+                <th>Missed</th>
+                <th>Makespan</th>
+              </tr>
+            </thead>
+            <tbody id="compareTableBody">
+              <tr><td colspan="6" style="text-align:center;color:var(--text3);padding:30px">Click COMPARE ALL to run all algorithms</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="panel fade-in">
+        <div class="panel-header"><span class="panel-title">Profit Comparison</span></div>
+        <div class="panel-body">
+          <div class="bar-chart" id="profitChart">
+            <div style="color:var(--text3);font-size:12px;text-align:center;padding:30px">Run comparison to see chart</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD TASK TAB -->
+  <div class="tab-content" id="tab-add">
+    <div class="panel fade-in">
+      <div class="panel-header"><span class="panel-title">Add New Task</span></div>
+      <div class="panel-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Task ID</label>
+            <input class="form-input" id="new-tid" placeholder="e.g. T11">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Duration (hours)</label>
+            <input class="form-input" type="number" id="new-dur" value="3" min="1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Deadline (hours)</label>
+            <input class="form-input" type="number" id="new-ddl" value="40" min="1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Priority (1-5)</label>
+            <input class="form-input" type="number" id="new-prio" value="3" min="1" max="5">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Skill Required</label>
+            <select class="form-input" id="new-skill">
+              <option value="backend">backend</option>
+              <option value="frontend">frontend</option>
+              <option value="qa">qa</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Profit Score</label>
+            <input class="form-input" type="number" id="new-profit" value="300" min="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Depends On (ID)</label>
+            <input class="form-input" id="new-deps" placeholder="e.g. T1|T2 (optional)">
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="addTask()">+ ADD TASK</button>
+        <span id="addTaskMsg" style="margin-left:12px;font-size:12px;color:var(--green)"></span>
+      </div>
+    </div>
+    <div class="panel fade-in" style="margin-top:20px">
+      <div class="panel-header">
+        <span class="panel-title">Current Task Dataset</span>
+        <button class="btn btn-danger" style="font-size:10px;padding:4px 10px" onclick="clearTasks()">CLEAR ALL</button>
+      </div>
+      <div class="panel-body" style="padding:0;overflow-x:auto">
+        <table class="task-table" id="datasetTable">
+          <thead>
+            <tr><th>Task ID</th><th>Duration</th><th>Deadline</th><th>Priority</th><th>Skill</th><th>Deps</th><th>Profit</th><th>Action</th></tr>
+          </thead>
+          <tbody id="datasetTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- WHAT-IF TAB -->
+  <div class="tab-content" id="tab-whatif">
+    <div class="panel fade-in">
+      <div class="panel-header"><span class="panel-title">What-If Analysis — Constraint Tweaking</span></div>
+      <div class="panel-body">
+        <div class="whatif-grid">
+          <div class="whatif-section">
+            <div class="whatif-title">⚡ Change Deadline</div>
+            <div class="form-grid" style="grid-template-columns:1fr 1fr">
+              <div class="form-group">
+                <label class="form-label">Task ID</label>
+                <select class="form-input" id="wi-task-id"></select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">New Deadline (h)</label>
+                <input class="form-input" type="number" id="wi-new-ddl" value="30">
+              </div>
+            </div>
+            <button class="btn btn-secondary" onclick="whatIfDeadline()">APPLY & RE-SCHEDULE</button>
+          </div>
+          <div class="whatif-section">
+            <div class="whatif-title">👷 Change Resource Shift</div>
+            <div class="form-grid" style="grid-template-columns:1fr 1fr">
+              <div class="form-group">
+                <label class="form-label">Resource</label>
+                <select class="form-input" id="wi-res-id">
+                  <option value="R1">R1 (backend|qa)</option>
+                  <option value="R2">R2 (frontend|qa)</option>
+                  <option value="R3">R3 (backend|frontend)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">New Shift End (h)</label>
+                <input class="form-input" type="number" id="wi-shift-end" value="10">
+              </div>
+            </div>
+            <button class="btn btn-secondary" onclick="whatIfShift()">APPLY & RE-SCHEDULE</button>
+          </div>
+          <div class="whatif-section">
+            <div class="whatif-title">🔺 Boost Priority</div>
+            <div class="form-grid" style="grid-template-columns:1fr 1fr">
+              <div class="form-group">
+                <label class="form-label">Task ID</label>
+                <select class="form-input" id="wi-boost-task"></select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">New Priority (1-5)</label>
+                <input class="form-input" type="number" id="wi-new-prio" value="5" min="1" max="5">
+              </div>
+            </div>
+            <button class="btn btn-secondary" onclick="whatIfPriority()">APPLY & RE-SCHEDULE</button>
+          </div>
+          <div class="whatif-section">
+            <div class="whatif-title">📊 Results Delta</div>
+            <div id="whatifResults" style="font-size:12px;color:var(--text3)">
+              Apply a what-if change to see the impact
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- INFO TAB -->
+  <div class="tab-content" id="tab-info">
+    <div class="panel fade-in">
+      <div class="panel-header"><span class="panel-title">DSA Concepts & Interview Prep</span></div>
+      <div class="panel-body">
+        <div class="algo-cards">
+          <div class="algo-card">
+            <div class="algo-card-name" style="color:var(--accent)">Greedy Algorithm</div>
+            <div class="algo-card-tag">O(N log N) · EDF + Priority</div>
+            <ul class="algo-card-list">
+              <li>Makes locally optimal choice at each step</li>
+              <li>Sort by deadline then priority (heap)</li>
+              <li>Respects dependency topological order</li>
+              <li>Fast: no backtracking needed</li>
+              <li>Used in: CPU scheduling, job shops</li>
+            </ul>
+          </div>
+          <div class="algo-card">
+            <div class="algo-card-name" style="color:#a78bfa">Priority Queue</div>
+            <div class="algo-card-tag">O(log N) insert/extract · Min-Heap</div>
+            <ul class="algo-card-list">
+              <li>Binary min-heap for task selection</li>
+              <li>Score = deadline / (priority × profit)</li>
+              <li>O(log N) push/pop operations</li>
+              <li>Always picks best next task instantly</li>
+              <li>Used in: Dijkstra, OS task queues</li>
+            </ul>
+          </div>
+          <div class="algo-card">
+            <div class="algo-card-name" style="color:var(--green)">Dynamic Programming</div>
+            <div class="algo-card-tag">O(N²) · Weighted Job Scheduling</div>
+            <ul class="algo-card-list">
+              <li>Solves subproblems, stores solutions</li>
+              <li>Binary search for O(N log N) variant</li>
+              <li>Optimal non-overlapping job subset</li>
+              <li>Maximizes total profit globally</li>
+              <li>Used in: genome sequencing, finance</li>
+            </ul>
+          </div>
+          <div class="algo-card">
+            <div class="algo-card-name" style="color:var(--yellow)">Topological Sort</div>
+            <div class="algo-card-tag">O(V+E) · Kahn's Algorithm</div>
+            <ul class="algo-card-list">
+              <li>BFS-based dependency resolution</li>
+              <li>Detects circular dependencies</li>
+              <li>Ensures dep tasks run first</li>
+              <li>DAG traversal using in-degree</li>
+              <li>Used in: build systems, makefiles</li>
+            </ul>
+          </div>
+          <div class="algo-card">
+            <div class="algo-card-name" style="color:var(--orange)">Data Structures</div>
+            <div class="algo-card-tag">Core DSA Used</div>
+            <ul class="algo-card-list">
+              <li>Min-Heap (heapq) — priority queue</li>
+              <li>Hash Map (dict) — O(1) task lookup</li>
+              <li>Adjacency List — dependency graph</li>
+              <li>Deque — BFS queue for topo-sort</li>
+              <li>Sorted Array — DP binary search</li>
+            </ul>
+          </div>
+          <div class="algo-card">
+            <div class="algo-card-name" style="color:var(--red)">Interview Q&A</div>
+            <div class="algo-card-tag">Top 10 Questions</div>
+            <ul class="algo-card-list">
+              <li>Why heapq over sorted list?</li>
+              <li>How does EDF differ from priority?</li>
+              <li>Explain weighted job scheduling DP</li>
+              <li>How do you handle circular deps?</li>
+              <li>Greedy vs DP trade-offs?</li>
+            </ul>
+          </div>
+        </div>
+
+        <div style="margin-top:24px;padding:20px;background:var(--surface2);border:1px solid var(--border);border-radius:8px">
+          <div style="font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--accent);margin-bottom:12px">🎯 "Explain Your Project" — Model Answer</div>
+          <p style="font-size:12px;color:var(--text2);line-height:1.7">
+            "I built a Task Scheduler Optimization System that solves the problem of executing multiple tasks efficiently when each has different priorities, deadlines, execution times, and dependency constraints. The system implements three algorithms: a Greedy scheduler using topological sort + EDF, a Priority Queue scheduler using Python's min-heap with profit-weighted scoring, and a Dynamic Programming solver for the Weighted Job Scheduling Problem. Each algorithm produces an optimized execution plan, calculates KPIs like on-time percentage and total profit, and identifies missed or late tasks. The system also includes a what-if analysis feature to test constraint changes in real time. This mirrors how real-world systems like OS CPU schedulers, cloud job queues, and project management tools work."
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// =============================================
+// DATA
+// =============================================
+const DEFAULT_TASKS = [
+  {task_id:'T1',  duration_h:4, deadline_h:24, priority:3, skill:'backend',  depends_on:[],       profit:300},
+  {task_id:'T2',  duration_h:6, deadline_h:32, priority:2, skill:'frontend', depends_on:['T1'],   profit:200},
+  {task_id:'T3',  duration_h:2, deadline_h:20, priority:5, skill:'qa',       depends_on:['T1'],   profit:500},
+  {task_id:'T4',  duration_h:8, deadline_h:40, priority:1, skill:'backend',  depends_on:[],       profit:100},
+  {task_id:'T5',  duration_h:3, deadline_h:28, priority:4, skill:'frontend', depends_on:[],       profit:400},
+  {task_id:'T6',  duration_h:5, deadline_h:36, priority:3, skill:'qa',       depends_on:['T2','T5'], profit:350},
+  {task_id:'T7',  duration_h:2, deadline_h:18, priority:5, skill:'backend',  depends_on:[],       profit:550},
+  {task_id:'T8',  duration_h:4, deadline_h:44, priority:2, skill:'frontend', depends_on:['T4'],   profit:250},
+  {task_id:'T9',  duration_h:3, deadline_h:30, priority:4, skill:'qa',       depends_on:['T7'],   profit:420},
+  {task_id:'T10', duration_h:6, deadline_h:48, priority:1, skill:'backend',  depends_on:['T6'],   profit:150},
+];
+
+const STRESS_TASKS = [
+  ...DEFAULT_TASKS,
+  {task_id:'T11', duration_h:3, deadline_h:22, priority:4, skill:'backend',  depends_on:[],    profit:380},
+  {task_id:'T12', duration_h:5, deadline_h:35, priority:3, skill:'frontend', depends_on:['T11'], profit:290},
+  {task_id:'T13', duration_h:2, deadline_h:16, priority:5, skill:'qa',       depends_on:[],    profit:600},
+  {task_id:'T14', duration_h:7, deadline_h:50, priority:2, skill:'backend',  depends_on:['T10'], profit:180},
+  {task_id:'T15', duration_h:4, deadline_h:26, priority:4, skill:'frontend', depends_on:['T13'], profit:450},
+  {task_id:'T16', duration_h:3, deadline_h:33, priority:3, skill:'qa',       depends_on:['T12'], profit:320},
+  {task_id:'T17', duration_h:6, deadline_h:42, priority:2, skill:'backend',  depends_on:['T8'], profit:220},
+  {task_id:'T18', duration_h:2, deadline_h:20, priority:5, skill:'qa',       depends_on:[],    profit:520},
+  {task_id:'T19', duration_h:4, deadline_h:38, priority:3, skill:'frontend', depends_on:['T16','T18'], profit:340},
+  {task_id:'T20', duration_h:5, deadline_h:55, priority:1, skill:'backend',  depends_on:['T14'], profit:130},
+];
+
+const TIGHT_TASKS = [
+  {task_id:'T1',  duration_h:4, deadline_h:6,  priority:5, skill:'backend',  depends_on:[],    profit:500},
+  {task_id:'T2',  duration_h:3, deadline_h:8,  priority:4, skill:'frontend', depends_on:[],    profit:400},
+  {task_id:'T3',  duration_h:2, deadline_h:5,  priority:5, skill:'qa',       depends_on:[],    profit:600},
+  {task_id:'T4',  duration_h:5, deadline_h:10, priority:3, skill:'backend',  depends_on:['T1'], profit:300},
+  {task_id:'T5',  duration_h:3, deadline_h:7,  priority:4, skill:'frontend', depends_on:[],    profit:450},
+  {task_id:'T6',  duration_h:4, deadline_h:12, priority:3, skill:'qa',       depends_on:['T3'], profit:350},
+  {task_id:'T7',  duration_h:6, deadline_h:9,  priority:2, skill:'backend',  depends_on:['T1'], profit:200},
+  {task_id:'T8',  duration_h:2, deadline_h:11, priority:5, skill:'frontend', depends_on:['T2','T5'], profit:550},
+];
+
+const RESOURCES = [
+  {res_id:'R1', skills:['backend','qa'],       shift_start_h:0, shift_end_h:8},
+  {res_id:'R2', skills:['frontend','qa'],      shift_start_h:0, shift_end_h:8},
+  {res_id:'R3', skills:['backend','frontend'], shift_start_h:0, shift_end_h:8},
+];
+
+let currentTasks = JSON.parse(JSON.stringify(DEFAULT_TASKS));
+let lastResult = null;
+let comparisonResults = [];
+let resources = JSON.parse(JSON.stringify(RESOURCES));
+
+// =============================================
+// SCHEDULING ALGORITHMS (JS Implementation)
+// =============================================
+
+function topoSort(tasks) {
+  const inDeg = {}, children = {}, map = {};
+  tasks.forEach(t => {
+    map[t.task_id] = t;
+    inDeg[t.task_id] = (inDeg[t.task_id] || 0);
+    t.depends_on.forEach(d => {
+      inDeg[t.task_id] = (inDeg[t.task_id] || 0) + 1;
+      if (!children[d]) children[d] = [];
+      children[d].push(t.task_id);
+    });
+  });
+
+  let queue = tasks.filter(t => (inDeg[t.task_id] || 0) === 0).map(t => t.task_id);
+  const order = [];
+
+  while (queue.length) {
+    queue.sort((a, b) => -map[a].priority + map[b].priority || map[a].deadline_h - map[b].deadline_h);
+    const u = queue.shift();
+    order.push(u);
+    (children[u] || []).forEach(v => {
+      inDeg[v]--;
+      if (inDeg[v] === 0) queue.push(v);
+    });
+  }
+  return order;
+}
+
+function findSlot(task, resCursors, earliestEnd, resources, horizon) {
+  let bestStart = null, bestRid = null, bestScore = Infinity;
+
+  for (const res of resources) {
+    if (!res.skills.includes(task.skill)) continue;
+    const depEnd = Math.max(0, ...task.depends_on.map(d => earliestEnd[d] || 0));
+    let cur = Math.max(resCursors[res.res_id] || 0, depEnd);
+
+    // Align to shift window
+    let day = Math.floor(cur / 24);
+    let shiftEnd = res.shift_end_h + day * 24;
+    while (cur + task.duration_h > shiftEnd) {
+      day++;
+      cur = res.shift_start_h + day * 24;
+      shiftEnd = res.shift_end_h + day * 24;
+    }
+
+    if (cur + task.duration_h > horizon) continue;
+
+    const lateness = Math.max(0, cur + task.duration_h - task.deadline_h);
+    const score = lateness * (6 - task.priority) - task.profit * 0.1;
+
+    if (score < bestScore) {
+      bestScore = score;
+      bestStart = cur;
+      bestRid = res.res_id;
+    }
+  }
+  return { start: bestStart, rid: bestRid };
+}
+
+function runGreedy(tasks, res, horizon) {
+  const resCursors = {}, earliestEnd = {};
+  res.forEach(r => resCursors[r.res_id] = 0);
+
+  const topo = topoSort(tasks);
+  const map = {};
+  tasks.forEach(t => map[t.task_id] = JSON.parse(JSON.stringify(t)));
+  const results = [];
+
+  for (const tid of topo) {
+    const task = map[tid];
+    const { start, rid } = findSlot(task, resCursors, earliestEnd, res, horizon);
+
+    if (start === null) {
+      task.is_missed = true;
+      earliestEnd[tid] = horizon;
+    } else {
+      task.start_h = start;
+      task.end_h = start + task.duration_h;
+      task.assigned_resource = rid;
+      task.lateness_h = Math.max(0, task.end_h - task.deadline_h);
+      task.is_late = task.lateness_h > 0;
+      task.is_missed = false;
+      resCursors[rid] = task.end_h;
+      earliestEnd[tid] = task.end_h;
+    }
+    results.push(task);
+  }
+  return results;
+}
+
+function runPriorityQueue(tasks, res, horizon) {
+  // Same as greedy but score formula for heap ordering
+  const taskMap = {};
+  tasks.forEach(t => taskMap[t.task_id] = JSON.parse(JSON.stringify(t)));
+  const inDeg = {}, children = {};
+  tasks.forEach(t => {
+    inDeg[t.task_id] = (inDeg[t.task_id] || 0);
+    t.depends_on.forEach(d => {
+      inDeg[t.task_id]++;
+      if (!children[d]) children[d] = [];
+      children[d].push(t.task_id);
+    });
+  });
+
+  // Min-heap simulation (sorted array)
+  const heapScore = t => t.deadline_h / ((t.priority) * Math.max(t.profit, 1));
+  let heap = tasks.filter(t => (inDeg[t.task_id] || 0) === 0)
+                   .map(t => taskMap[t.task_id])
+                   .sort((a,b) => heapScore(a) - heapScore(b));
+
+  const resCursors = {}, earliestEnd = {};
+  res.forEach(r => resCursors[r.res_id] = 0);
+  const results = [];
+
+  while (heap.length) {
+    const task = heap.shift(); // pop min
+    const { start, rid } = findSlot(task, resCursors, earliestEnd, res, horizon);
+
+    if (start === null) {
+      task.is_missed = true;
+      earliestEnd[task.task_id] = horizon;
+    } else {
+      task.start_h = start;
+      task.end_h = start + task.duration_h;
+      task.assigned_resource = rid;
+      task.lateness_h = Math.max(0, task.end_h - task.deadline_h);
+      task.is_late = task.lateness_h > 0;
+      task.is_missed = false;
+      resCursors[rid] = task.end_h;
+      earliestEnd[task.task_id] = task.end_h;
+    }
+    results.push(task);
+
+    // Unlock children
+    (children[task.task_id] || []).forEach(cid => {
+      inDeg[cid]--;
+      if (inDeg[cid] === 0) {
+        heap.push(taskMap[cid]);
+        heap.sort((a,b) => heapScore(a) - heapScore(b));
+      }
+    });
+  }
+  return results;
+}
+
+function runDP(tasks, res, horizon) {
+  // Weighted job scheduling per resource
+  const taskMap = {};
+  tasks.forEach(t => taskMap[t.task_id] = JSON.parse(JSON.stringify(t)));
+
+  // Resolve dependency earliest starts
+  const topo = topoSort(tasks);
+  const depEnd = {};
+  topo.forEach(tid => {
+    const t = taskMap[tid];
+    depEnd[tid] = Math.max(0, ...t.depends_on.map(d => (depEnd[d] || 0) + taskMap[d].duration_h));
+  });
+
+  const assigned = {};
+
+  for (const resource of res) {
+    const compat = tasks.filter(t => resource.skills.includes(t.skill));
+    // Build jobs
+    const jobs = compat.map(t => {
+      const s = Math.max(depEnd[t.task_id] || 0, resource.shift_start_h);
+      const e = s + t.duration_h;
+      return { s, e, t, profit: t.profit };
+    }).filter(j => j.e <= horizon).sort((a,b) => a.e - b.e);
+
+    const n = jobs.length;
+    if (!n) continue;
+
+    const dp = new Array(n+1).fill(0);
+    const choice = new Array(n+1).fill(null);
+    const ends = jobs.map(j => j.e);
+
+    function bisect(i) {
+      let lo = 0, hi = i;
+      while (lo < hi) {
+        const mid = (lo+hi)>>1;
+        if (ends[mid] <= jobs[i].s) lo = mid+1; else hi = mid;
+      }
+      return lo - 1;
+    }
+
+    for (let i = 1; i <= n; i++) {
+      const j = bisect(i-1);
+      const include = dp[j+1] + jobs[i-1].profit;
+      const exclude = dp[i-1];
+      if (include > exclude) { dp[i] = include; choice[i] = ['inc', i-1, j]; }
+      else { dp[i] = exclude; choice[i] = ['exc', i-1, null]; }
+    }
+
+    // Backtrack
+    let i = n;
+    while (i > 0) {
+      if (choice[i][0] === 'inc') {
+        const ji = choice[i][1];
+        const { s, e, t } = jobs[ji];
+        if (!assigned[t.task_id]) assigned[t.task_id] = { s, e, rid: resource.res_id };
+        i = choice[i][2] + 1;
+      } else i--;
+    }
+  }
+
+  return tasks.map(t => {
+    const task = JSON.parse(JSON.stringify(taskMap[t.task_id]));
+    if (assigned[t.task_id]) {
+      const { s, e, rid } = assigned[t.task_id];
+      task.start_h = s; task.end_h = e;
+      task.assigned_resource = rid;
+      task.lateness_h = Math.max(0, e - t.deadline_h);
+      task.is_late = task.lateness_h > 0;
+      task.is_missed = false;
+    } else {
+      task.is_missed = true;
+    }
+    return task;
+  });
+}
+
+function computeSummary(results, algoName) {
+  const scheduled = results.filter(t => !t.is_missed);
+  const missed = results.filter(t => t.is_missed);
+  const onTime = scheduled.filter(t => !t.is_late);
+  const late = scheduled.filter(t => t.is_late);
+  const totalProfit = onTime.reduce((s,t) => s + t.profit, 0);
+  const totalLateness = late.reduce((s,t) => s + t.lateness_h, 0);
+  const maxProfit = results.reduce((s,t) => s + t.profit, 0);
+  return {
+    algorithm: algoName,
+    tasks: results,
+    scheduled, missed, onTime, late,
+    total_tasks: results.length,
+    scheduled_count: scheduled.length,
+    missed_count: missed.length,
+    on_time_count: onTime.length,
+    late_count: late.length,
+    on_time_pct: results.length ? (100*onTime.length/results.length).toFixed(1) : 0,
+    total_profit: totalProfit,
+    total_lateness_h: totalLateness,
+    profit_efficiency_pct: maxProfit ? (totalProfit/maxProfit*100).toFixed(1) : 0,
+    makespan: scheduled.length ? Math.max(...scheduled.map(t => t.end_h)) : 0,
+  };
+}
+
+// =============================================
+// UI FUNCTIONS
+// =============================================
+
+function showLoading(show) {
+  document.getElementById('loadingOverlay').classList.toggle('visible', show);
+}
+
+function runSchedule() {
+  showLoading(true);
+  setTimeout(() => {
+    try {
+      const algo = document.getElementById('algoSelect').value;
+      const horizon = parseInt(document.getElementById('horizonInput').value) || 72;
+      const dataset = document.getElementById('datasetSelect').value;
+      const tasks = getDataset(dataset);
+
+      let results;
+      let algoName;
+      if (algo === 'greedy') {
+        results = runGreedy(tasks, resources, horizon);
+        algoName = 'Greedy (Priority + EDF)';
+      } else if (algo === 'priority_queue') {
+        results = runPriorityQueue(tasks, resources, horizon);
+        algoName = 'Priority Queue (Heap)';
+      } else {
+        results = runDP(tasks, resources, horizon);
+        algoName = 'Dynamic Programming';
+      }
+
+      lastResult = computeSummary(results, algoName);
+      updateKPIs(lastResult);
+      renderGantt(lastResult, horizon);
+      renderTaskTable(lastResult);
+      updateWhatIfSelects(tasks);
+      updateDatasetTable(tasks);
+    } catch(e) { console.error(e); }
+    showLoading(false);
+  }, 100);
+}
+
+function getDataset(key) {
+  if (key === 'stress') return JSON.parse(JSON.stringify(STRESS_TASKS));
+  if (key === 'tight') return JSON.parse(JSON.stringify(TIGHT_TASKS));
+  return JSON.parse(JSON.stringify(currentTasks));
+}
+
+function updateKPIs(s) {
+  document.getElementById('kpi-total').textContent = s.total_tasks;
+  document.getElementById('kpi-ontime').textContent = s.on_time_count;
+  document.getElementById('kpi-ontime-pct').textContent = s.on_time_pct + '% on-time rate';
+  document.getElementById('kpi-late').textContent = s.late_count;
+  document.getElementById('kpi-lateness').textContent = s.total_lateness_h + 'h total lateness';
+  document.getElementById('kpi-missed').textContent = s.missed_count;
+  document.getElementById('kpi-profit').textContent = s.total_profit;
+  document.getElementById('kpi-profit-eff').textContent = s.profit_efficiency_pct + '% efficiency';
+  document.getElementById('kpi-makespan').textContent = s.makespan + 'h';
+}
+
+function renderGantt(s, horizon) {
+  const container = document.getElementById('ganttContainer');
+  const tasks = s.scheduled;
+  if (!tasks.length) {
+    container.innerHTML = '<div style="color:var(--text3);text-align:center;padding:40px">No scheduled tasks</div>';
+    return;
+  }
+
+  const maxTime = Math.max(horizon, s.makespan + 4);
+  const PX_PER_HOUR = 14;
+  const totalWidth = maxTime * PX_PER_HOUR;
+
+  // Group by resource
+  const resGroups = {};
+  resources.forEach(r => resGroups[r.res_id] = []);
+  tasks.forEach(t => {
+    if (t.assigned_resource && resGroups[t.assigned_resource]) {
+      resGroups[t.assigned_resource].push(t);
+    }
+  });
+
+  let html = '<div style="min-width:' + (totalWidth + 96) + 'px">';
+
+  // Time header
+  html += '<div style="display:flex;margin-left:96px;margin-bottom:6px;">';
+  for (let h = 0; h <= maxTime; h += 8) {
+    html += `<div style="width:${8*PX_PER_HOUR}px;font-size:10px;color:var(--text3);border-left:1px solid var(--border);padding-left:3px">h${h}</div>`;
+  }
+  html += '</div>';
+
+  // Rows
+  for (const [rid, rtasks] of Object.entries(resGroups)) {
+    const res = resources.find(r => r.res_id === rid);
+    const skillStr = res ? res.skills.join('|') : '';
+    html += `<div class="gantt-row">`;
+    html += `<div class="gantt-resource-label"><div style="font-weight:600;color:var(--text)">${rid}</div><div style="font-size:9px;color:var(--text3)">${skillStr}</div></div>`;
+    html += `<div class="gantt-track" style="width:${totalWidth}px">`;
+
+    // Grid lines every 8h
+    for (let h = 0; h <= maxTime; h += 8) {
+      html += `<div class="gantt-gridline" style="left:${h*PX_PER_HOUR}px"></div>`;
+    }
+
+    // Deadline markers for all tasks
+    for (const t of tasks) {
+      if (t.assigned_resource === rid) {
+        const dl = t.deadline_h * PX_PER_HOUR;
+        html += `<div class="gantt-bar deadline-marker" title="Deadline: ${t.task_id}" style="left:${dl}px"></div>`;
+      }
+    }
+
+    // Bars
+    for (const t of rtasks) {
+      const left = t.start_h * PX_PER_HOUR;
+      const width = Math.max(t.duration_h * PX_PER_HOUR - 2, 8);
+      const cls = t.is_late ? 'late' : 'ontime';
+      const label = width > 30 ? t.task_id : '';
+      html += `<div class="gantt-bar ${cls}" 
+        style="left:${left}px;width:${width}px"
+        data-task='${JSON.stringify(t)}'
+        onmouseenter="showTooltip(event, this)"
+        onmouseleave="hideTooltip()"
+        >${label}</div>`;
+    }
+
+    html += '</div></div>';
+  }
+
+  // Missed tasks
+  if (s.missed.length) {
+    html += `<div style="margin-top:12px;padding:12px;background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.2);border-radius:6px">`;
+    html += `<div style="font-size:11px;color:var(--red);font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">⚠ Missed Tasks</div>`;
+    html += `<div style="display:flex;flex-wrap:wrap;gap:8px">`;
+    s.missed.forEach(t => {
+      html += `<span style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:var(--red);padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600">${t.task_id} (ddl:${t.deadline_h}h)</span>`;
+    });
+    html += '</div></div>';
+  }
+
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function renderTaskTable(s) {
+  const tbody = document.getElementById('taskTableBody');
+  document.getElementById('taskCount').textContent = `${s.total_tasks} tasks`;
+
+  const allTasks = [...s.scheduled.sort((a,b) => (a.start_h||0)-(b.start_h||0)), ...s.missed];
+
+  tbody.innerHTML = allTasks.map(t => {
+    const statusCls = t.is_missed ? 'missed' : t.is_late ? 'late' : 'ontime';
+    const statusTxt = t.is_missed ? 'MISSED' : t.is_late ? 'LATE' : 'ON TIME';
+    const prioDots = Array.from({length:5}, (_,i) =>
+      `<div class="priority-dot ${i < t.priority ? 'active' : ''}"></div>`).join('');
+
+    return `<tr>
+      <td><span class="task-id">${t.task_id}</span></td>
+      <td><div class="priority-bar">${prioDots}</div></td>
+      <td><span style="color:var(--text3);font-size:11px">${t.skill}</span></td>
+      <td style="color:var(--text3);font-size:11px">${t.depends_on?.join(', ')||'—'}</td>
+      <td>${t.duration_h}h</td>
+      <td>${t.deadline_h}h</td>
+      <td style="color:#a78bfa">${t.profit}</td>
+      <td>${t.is_missed ? '—' : t.start_h+'h'}</td>
+      <td>${t.is_missed ? '—' : t.end_h+'h'}</td>
+      <td style="color:var(--accent)">${t.assigned_resource||'—'}</td>
+      <td style="color:${t.lateness_h>0?'var(--yellow)':'var(--text3)'}">${t.is_missed?'—':t.lateness_h+'h'}</td>
+      <td><span class="status-pill status-${statusCls}">${statusTxt}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function runAllAlgorithms() {
+  showLoading(true);
+  setTimeout(() => {
+    const horizon = parseInt(document.getElementById('horizonInput').value) || 72;
+    const dataset = document.getElementById('datasetSelect').value;
+    const tasks = getDataset(dataset);
+
+    const gr = computeSummary(runGreedy(tasks, resources, horizon), 'Greedy (Priority + EDF)');
+    const pq = computeSummary(runPriorityQueue(tasks, resources, horizon), 'Priority Queue (Heap)');
+    const dp = computeSummary(runDP(tasks, resources, horizon), 'Dynamic Programming');
+
+    comparisonResults = [gr, pq, dp];
+    renderComparisonTable(comparisonResults);
+    renderProfitChart(comparisonResults);
+    switchTab('compare');
+    showLoading(false);
+  }, 150);
+}
+
+function renderComparisonTable(results) {
+  const maxProfit = Math.max(...results.map(r => r.total_profit));
+  const maxOnTime = Math.max(...results.map(r => parseFloat(r.on_time_pct)));
+  const minLateness = Math.min(...results.map(r => r.total_lateness_h));
+
+  document.getElementById('compareTableBody').innerHTML = results.map(r => `
+    <tr>
+      <td style="color:var(--text)">${r.algorithm}</td>
+      <td class="${parseFloat(r.on_time_pct)===maxOnTime?'best-cell':''}">${r.on_time_pct}%</td>
+      <td class="${r.total_profit===maxProfit?'best-cell':''}">${r.total_profit}</td>
+      <td class="${r.total_lateness_h===minLateness?'best-cell':''}">${r.total_lateness_h}h</td>
+      <td style="color:${r.missed_count>0?'var(--red)':'var(--green)'}">${r.missed_count}</td>
+      <td>${r.makespan}h</td>
+    </tr>
+  `).join('');
+}
+
+function renderProfitChart(results) {
+  const maxP = Math.max(...results.map(r => r.total_profit), 1);
+  const colors = ['var(--accent)', '#a78bfa', 'var(--green)'];
+
+  document.getElementById('profitChart').innerHTML = results.map((r, i) => `
+    <div class="bar-row">
+      <div class="bar-label" style="font-size:10px">${r.algorithm.split(' ')[0]}</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${(r.total_profit/maxP*100).toFixed(1)}%;background:${colors[i]}">${r.total_profit}</div>
+      </div>
+      <div class="bar-val">${r.on_time_pct}%</div>
+    </div>
+  `).join('');
+}
+
+// =============================================
+// TOOLTIP
+// =============================================
+function showTooltip(event, el) {
+  const t = JSON.parse(el.dataset.task);
+  const tt = document.getElementById('tooltip');
+  document.getElementById('tt-title').textContent = t.task_id + ' — ' + t.skill;
+  document.getElementById('tt-start').textContent = t.start_h + 'h';
+  document.getElementById('tt-end').textContent = t.end_h + 'h';
+  document.getElementById('tt-ddl').textContent = t.deadline_h + 'h';
+  document.getElementById('tt-dur').textContent = t.duration_h + 'h';
+  document.getElementById('tt-profit').textContent = t.profit;
+  document.getElementById('tt-status').textContent = t.is_missed ? 'MISSED' : t.is_late ? 'LATE' : 'ON TIME';
+  tt.style.left = (event.clientX + 12) + 'px';
+  tt.style.top = (event.clientY - 60) + 'px';
+  tt.classList.add('visible');
+}
+function hideTooltip() {
+  document.getElementById('tooltip').classList.remove('visible');
+}
+
+// =============================================
+// TABS
+// =============================================
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((b,i) => {
+    const names = ['gantt','tasks','compare','add','whatif','info'];
+    b.classList.toggle('active', names[i] === name);
+  });
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// =============================================
+// ADD TASK
+// =============================================
+function addTask() {
+  const tid = document.getElementById('new-tid').value.trim();
+  if (!tid) { alert('Enter a Task ID'); return; }
+  if (currentTasks.find(t => t.task_id === tid)) { alert('Task ID already exists'); return; }
+
+  currentTasks.push({
+    task_id: tid,
+    duration_h: parseInt(document.getElementById('new-dur').value),
+    deadline_h: parseInt(document.getElementById('new-ddl').value),
+    priority: parseInt(document.getElementById('new-prio').value),
+    skill: document.getElementById('new-skill').value,
+    depends_on: document.getElementById('new-deps').value.split('|').map(s=>s.trim()).filter(Boolean),
+    profit: parseInt(document.getElementById('new-profit').value),
+  });
+
+  document.getElementById('addTaskMsg').textContent = `✓ ${tid} added! Click RUN SCHEDULE to update.`;
+  setTimeout(() => document.getElementById('addTaskMsg').textContent = '', 3000);
+  updateDatasetTable(currentTasks);
+  document.getElementById('datasetSelect').value = 'default';
+}
+
+function clearTasks() {
+  currentTasks = JSON.parse(JSON.stringify(DEFAULT_TASKS));
+  updateDatasetTable(currentTasks);
+}
+
+function updateDatasetTable(tasks) {
+  document.getElementById('datasetTableBody').innerHTML = tasks.map(t => `
+    <tr>
+      <td class="task-id">${t.task_id}</td>
+      <td>${t.duration_h}h</td>
+      <td>${t.deadline_h}h</td>
+      <td>${t.priority}</td>
+      <td>${t.skill}</td>
+      <td style="color:var(--text3);font-size:11px">${t.depends_on?.join(', ')||'—'}</td>
+      <td style="color:#a78bfa">${t.profit}</td>
+      <td><button class="btn btn-danger" style="font-size:10px;padding:3px 8px" onclick="removeTask('${t.task_id}')">✕</button></td>
+    </tr>
+  `).join('');
+}
+
+function removeTask(tid) {
+  currentTasks = currentTasks.filter(t => t.task_id !== tid);
+  currentTasks.forEach(t => t.depends_on = t.depends_on.filter(d => d !== tid));
+  updateDatasetTable(currentTasks);
+}
+
+// =============================================
+// WHAT-IF
+// =============================================
+function updateWhatIfSelects(tasks) {
+  const opts = tasks.map(t => `<option value="${t.task_id}">${t.task_id}</option>`).join('');
+  document.getElementById('wi-task-id').innerHTML = opts;
+  document.getElementById('wi-boost-task').innerHTML = opts;
+}
+
+function applyWhatIf(modFn, label) {
+  const horizon = parseInt(document.getElementById('horizonInput').value) || 72;
+  const baseTasks = JSON.parse(JSON.stringify(currentTasks));
+  const modTasks = modFn(JSON.parse(JSON.stringify(currentTasks)));
+
+  const baseResult = computeSummary(runPriorityQueue(baseTasks, resources, horizon), 'Base');
+  const newResult = computeSummary(runPriorityQueue(modTasks, resources, horizon), 'Modified');
+
+  const delta = {
+    on_time_pct: (parseFloat(newResult.on_time_pct) - parseFloat(baseResult.on_time_pct)).toFixed(1),
+    total_profit: newResult.total_profit - baseResult.total_profit,
+    total_lateness_h: newResult.total_lateness_h - baseResult.total_lateness_h,
+    missed_count: newResult.missed_count - baseResult.missed_count,
+  };
+
+  const sign = v => v > 0 ? '+' : '';
+  const col = (v, pos='green', neg='red') => v > 0 ? `color:var(--${pos})` : v < 0 ? `color:var(--${neg})` : 'color:var(--text3)';
+
+  document.getElementById('whatifResults').innerHTML = `
+    <div style="font-size:11px;color:var(--accent);font-weight:700;margin-bottom:8px">${label}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+      <div style="font-size:11px;color:var(--text2)">On-Time %</div>
+      <div style="font-size:11px;${col(delta.on_time_pct)}">${sign(delta.on_time_pct)}${delta.on_time_pct}%</div>
+      <div style="font-size:11px;color:var(--text2)">Profit</div>
+      <div style="font-size:11px;${col(delta.total_profit)}">${sign(delta.total_profit)}${delta.total_profit}</div>
+      <div style="font-size:11px;color:var(--text2)">Lateness</div>
+      <div style="font-size:11px;${col(delta.total_lateness_h,'red','green')}">${sign(delta.total_lateness_h)}${delta.total_lateness_h}h</div>
+      <div style="font-size:11px;color:var(--text2)">Missed</div>
+      <div style="font-size:11px;${col(delta.missed_count,'red','green')}">${sign(delta.missed_count)}${delta.missed_count}</div>
+    </div>
+    <div style="margin-top:8px;font-size:10px;color:var(--text3)">Base → Modified comparison</div>
+  `;
+}
+
+function whatIfDeadline() {
+  const tid = document.getElementById('wi-task-id').value;
+  const newDdl = parseInt(document.getElementById('wi-new-ddl').value);
+  applyWhatIf(tasks => { tasks.find(t=>t.task_id===tid).deadline_h = newDdl; return tasks; },
+    `Changed ${tid} deadline → ${newDdl}h`);
+}
+function whatIfShift() {
+  const rid = document.getElementById('wi-res-id').value;
+  const newEnd = parseInt(document.getElementById('wi-shift-end').value);
+  const origRes = JSON.parse(JSON.stringify(resources));
+  resources.find(r=>r.res_id===rid).shift_end_h = newEnd;
+  applyWhatIf(t=>t, `Changed ${rid} shift end → ${newEnd}h`);
+  resources = origRes; // restore
+}
+function whatIfPriority() {
+  const tid = document.getElementById('wi-boost-task').value;
+  const newPrio = parseInt(document.getElementById('wi-new-prio').value);
+  applyWhatIf(tasks => { tasks.find(t=>t.task_id===tid).priority = newPrio; return tasks; },
+    `Boosted ${tid} priority → ${newPrio}`);
+}
+
+function exportReport() {
+  if (!lastResult) { alert('Run schedule first'); return; }
+  const lines = [
+    'TASK SCHEDULER OPTIMIZATION SYSTEM — REPORT',
+    '='.repeat(50),
+    `Algorithm: ${lastResult.algorithm}`,
+    `Total Tasks: ${lastResult.total_tasks}`,
+    `On Time: ${lastResult.on_time_count} (${lastResult.on_time_pct}%)`,
+    `Late: ${lastResult.late_count}`,
+    `Missed: ${lastResult.missed_count}`,
+    `Total Profit: ${lastResult.total_profit}`,
+    `Total Lateness: ${lastResult.total_lateness_h}h`,
+    `Makespan: ${lastResult.makespan}h`,
+    '',
+    'SCHEDULE:',
+    '-'.repeat(50),
+    'Task,Resource,Start,End,Deadline,Lateness,Status',
+    ...lastResult.scheduled.map(t =>
+      `${t.task_id},${t.assigned_resource},${t.start_h}h,${t.end_h}h,${t.deadline_h}h,${t.lateness_h}h,${t.is_late?'LATE':'ON TIME'}`
+    ),
+    ...(lastResult.missed.length ? ['', 'MISSED:', ...lastResult.missed.map(t => t.task_id)] : [])
+  ];
+  const blob = new Blob([lines.join('\n')], {type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `schedule_report_${lastResult.algorithm.split(' ')[0].toLowerCase()}.txt`;
+  a.click();
+}
+
+function resetAll() {
+  lastResult = null;
+  comparisonResults = [];
+  currentTasks = JSON.parse(JSON.stringify(DEFAULT_TASKS));
+  resources = JSON.parse(JSON.stringify(RESOURCES));
+  document.getElementById('ganttContainer').innerHTML = '<div style="color:var(--text3);font-size:12px;text-align:center;padding:40px">Click RUN SCHEDULE to generate Gantt chart</div>';
+  document.getElementById('taskTableBody').innerHTML = '<tr><td colspan="12" style="text-align:center;color:var(--text3);padding:40px">Run schedule to see task details</td></tr>';
+  document.getElementById('compareTableBody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:30px">Click COMPARE ALL to run all algorithms</td></tr>';
+  document.getElementById('profitChart').innerHTML = '<div style="color:var(--text3);font-size:12px;text-align:center;padding:30px">Run comparison to see chart</div>';
+  ['kpi-total','kpi-ontime','kpi-late','kpi-missed','kpi-profit','kpi-makespan'].forEach(id => document.getElementById(id).textContent = '—');
+}
+
+// =============================================
+// INIT
+// =============================================
+updateDatasetTable(currentTasks);
+updateWhatIfSelects(currentTasks);
+// Auto-run on load
+setTimeout(() => runSchedule(), 300);
+</script>
+</body>
+</html>
